@@ -1,6 +1,12 @@
 import { computed, type Ref } from 'vue'
 import type { FungusRecord, GillAttachment, SporeColor, SporePrint } from '@/types'
-import { SPORE_ATTACHMENT_AFFINITY, TRAIT_WEIGHTS, traitScore, toPercent } from '@/utils/spore'
+import {
+  SPORE_ATTACHMENT_AFFINITY,
+  TRAIT_WEIGHTS,
+  latestSporeOf,
+  traitScore,
+  toPercent
+} from '@/utils/spore'
 
 /** 鉴定工作页的可勾选特征条件 */
 export interface MatchCriteria {
@@ -87,8 +93,9 @@ export function useCandidateMatch(
   )
 
   const candidates = computed<Candidate[]>(() => {
+    // 候选排序只看最近一次孢子印观察
     const list = records.value.map((record) =>
-      scoreRecord(record, spores.value.find((item) => item.recordId === record.id) ?? null, criteria.value)
+      scoreRecord(record, latestSporeOf(spores.value, record.id), criteria.value)
     )
     return list.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score

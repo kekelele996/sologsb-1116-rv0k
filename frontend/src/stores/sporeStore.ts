@@ -1,6 +1,7 @@
 import { createStore } from 'zustand/vanilla'
 import type { SporePrint } from '@/types'
 import { db, syncAll, syncDelete, syncPut } from '@/hooks/usePersistentStore'
+import { compareByRegisteredDesc } from '@/utils/spore'
 
 export interface SporeState {
   spores: SporePrint[]
@@ -8,6 +9,7 @@ export interface SporeState {
   hydrate: () => Promise<void>
   save: (spore: SporePrint) => Promise<void>
   remove: (id: string) => Promise<void>
+  removeMany: (ids: string[]) => Promise<void>
   removeByRecord: (recordId: string) => Promise<void>
 }
 
@@ -16,7 +18,7 @@ export const sporeStore = createStore<SporeState>((set, get) => ({
   loaded: false,
   hydrate: async () => {
     const spores = await syncAll<SporePrint>(db.spores)
-    spores.sort((a, b) => b.observeDate.localeCompare(a.observeDate))
+    spores.sort(compareByRegisteredDesc)
     set({ spores, loaded: true })
   },
   save: async (spore) => {
@@ -25,6 +27,10 @@ export const sporeStore = createStore<SporeState>((set, get) => ({
   },
   remove: async (id) => {
     await syncDelete<SporePrint>(db.spores, id)
+    await get().hydrate()
+  },
+  removeMany: async (ids) => {
+    await Promise.all(ids.map((id) => syncDelete<SporePrint>(db.spores, id)))
     await get().hydrate()
   },
   removeByRecord: async (recordId) => {

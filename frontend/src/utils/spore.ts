@@ -1,4 +1,26 @@
-import type { GillAttachment, SporeColor } from '@/types'
+import type { GillAttachment, SporeColor, SporePrint } from '@/types'
+
+/** 登记先后排序：新登记在前，同一时刻再比观察日期、id，保证顺序确定 */
+export function compareByRegisteredDesc(a: SporePrint, b: SporePrint): number {
+  const byCreated = b.createdAt.localeCompare(a.createdAt)
+  if (byCreated !== 0) return byCreated
+  const byDate = b.observeDate.localeCompare(a.observeDate)
+  if (byDate !== 0) return byDate
+  return b.id.localeCompare(a.id)
+}
+
+/**
+ * 图谱、候选排序、对比视图只看最近一次登记：
+ * 返回某条目所有观察里登记时刻最新的一条；全部移除后为 null（未记录）。
+ */
+export function latestSporeOf(spores: SporePrint[], recordId: string): SporePrint | null {
+  let latest: SporePrint | null = null
+  for (const item of spores) {
+    if (item.recordId !== recordId) continue
+    if (!latest || compareByRegisteredDesc(item, latest) < 0) latest = item
+  }
+  return latest
+}
 
 /** 印色 → 可辨识色卡色值 */
 export const SPORE_COLOR_VALUES: Record<SporeColor, string> = {

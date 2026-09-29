@@ -11,6 +11,7 @@ import { recordStore } from '@/stores/recordStore'
 import { sporeStore } from '@/stores/sporeStore'
 import { pointStore } from '@/stores/pointStore'
 import { identifyStore } from '@/stores/identifyStore'
+import { latestSporeOf } from '@/utils/spore'
 
 const route = useRoute()
 const router = useRouter()
@@ -65,8 +66,9 @@ function syncQuery(): void {
   void router.replace({ path: '/compare', query: { ids: selectedIds.value.join(',') } })
 }
 
+/** 对比页与图谱、候选排序一致，只采用最近一次孢子印观察 */
 function sporeOf(recordId: string): SporePrint | null {
-  return sporeState.spores.find((item) => item.recordId === recordId) ?? null
+  return latestSporeOf(sporeState.spores, recordId)
 }
 
 function pointName(pointId: string): string {

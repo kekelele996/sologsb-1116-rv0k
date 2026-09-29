@@ -23,6 +23,7 @@ import { recordStore } from '@/stores/recordStore'
 import { sporeStore } from '@/stores/sporeStore'
 import { pointStore } from '@/stores/pointStore'
 import { identifyStore } from '@/stores/identifyStore'
+import { latestSporeOf } from '@/utils/spore'
 import { uid } from '@/utils/id'
 
 const router = useRouter()
@@ -52,7 +53,7 @@ const visible = computed(() => {
   if (!filterAttachment.value && !filterColor.value && !keyword.value.trim()) {
     return recordState.records.map((record) => ({
       record,
-      spore: sporeState.spores.find((item) => item.recordId === record.id) ?? null,
+      spore: latestSporeOf(sporeState.spores, record.id),
       percent: 0,
       matched: [] as string[]
     }))

@@ -4,7 +4,7 @@ import Dexie, { type Table } from 'dexie'
 import type { CollectPoint, FungusRecord, IdentifyLog, SporePrint } from '@/types'
 
 /** IndexedDB 数据结构版本号 */
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 export interface MetaRow {
   key: string
@@ -44,6 +44,26 @@ class FungiGuideDb extends Dexie {
           .modify((record) => {
             if (!record.fleshReaction) {
               record.fleshReaction = '不变色'
+            }
+          })
+      })
+    // v3：孢子印按次留档，新增「登记时刻」字段；
+    // 迁移时为历史记录按观察日期回填，使旧数据仍有确定的登记先后
+    this.version(SCHEMA_VERSION)
+      .stores({
+        records: 'id, code, pointId, attachment, capShape',
+        spores: 'id, recordId, color, observeDate',
+        points: 'id, name, substrate, vegetation',
+        identifies: 'id, recordId, conclusion, date',
+        meta: 'key'
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table<SporePrint, string>('spores')
+          .toCollection()
+          .modify((spore) => {
+            if (!spore.createdAt) {
+              spore.createdAt = spore.observeDate ? `${spore.observeDate}T00:00:00.000Z` : new Date(0).toISOString()
             }
           })
       })
@@ -88,6 +108,7 @@ export async function seedDemoData(): Promise<void> {
   if (count > 0) return
 
   const today = new Date().toISOString().slice(0, 10)
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
   await db.points.bulkPut([
     {
@@ -195,11 +216,22 @@ export async function seedDemoData(): Promise<void> {
     {
       id: 'spo_001',
       recordId: 'rec_001',
+      color: '奶油色',
+      shape: '圆形印痕，边缘松散',
+      hours: 18,
+      observeDate: yesterday,
+      moisture: '子实体偏干，印痕较薄',
+      createdAt: `${yesterday}T08:30:00.000Z`
+    },
+    {
+      id: 'spo_001b',
+      recordId: 'rec_001',
       color: '淡黄',
       shape: '圆形印痕，边缘略散',
       hours: 12,
       observeDate: today,
-      moisture: '子实体偏干，印痕较薄'
+      moisture: '重新补水后重做，印痕饱满',
+      createdAt: `${today}T09:15:00.000Z`
     },
     {
       id: 'spo_002',
@@ -208,7 +240,8 @@ export async function seedDemoData(): Promise<void> {
       shape: '圆形印痕，中心致密',
       hours: 8,
       observeDate: today,
-      moisture: '新鲜子实体，印痕厚实'
+      moisture: '新鲜子实体，印痕厚实',
+      createdAt: `${today}T07:40:00.000Z`
     },
     {
       id: 'spo_003',
@@ -217,7 +250,8 @@ export async function seedDemoData(): Promise<void> {
       shape: '不规则印痕',
       hours: 24,
       observeDate: today,
-      moisture: '木质化样本，印痕浅'
+      moisture: '木质化样本，印痕浅',
+      createdAt: `${today}T06:20:00.000Z`
     }
   ])
 
