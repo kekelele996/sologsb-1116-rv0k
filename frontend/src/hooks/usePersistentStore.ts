@@ -4,7 +4,7 @@ import Dexie, { type Table } from 'dexie'
 import type { CollectPoint, FungusRecord, IdentifyLog, SporePrint } from '@/types'
 
 /** IndexedDB 数据结构版本号 */
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 export interface MetaRow {
   key: string
@@ -29,7 +29,7 @@ class FungiGuideDb extends Dexie {
       meta: 'key'
     })
     // v2：新增「菌肉变色反应」字段，迁移时为历史条目补齐默认值（不变色）
-    this.version(SCHEMA_VERSION)
+    this.version(2)
       .stores({
         records: 'id, code, pointId, attachment, capShape',
         spores: 'id, recordId, color, observeDate',
@@ -46,6 +46,34 @@ class FungiGuideDb extends Dexie {
               record.fleshReaction = '不变色'
             }
           })
+      })
+
+    type LegacySpore = Omit<SporePrint, 'createdAt'> & { createdAt?: number }
+
+    // v3：孢子印按每次登记留档，新增登记时间；图谱与候选只取最近一次
+    this.version(SCHEMA_VERSION)
+      .stores({
+        records: 'id, code, pointId, attachment, capShape',
+        spores: 'id, recordId, color, observeDate, createdAt',
+        points: 'id, name, substrate, vegetation',
+        identifies: 'id, recordId, conclusion, date',
+        meta: 'key'
+      })
+      .upgrade(async (tx) => {
+        const sporesTable = tx.table<LegacySpore, string>('spores')
+        const spores = await sporesTable.toArray()
+        const counts = new Map<string, number>()
+        const migrated = spores
+          .sort((a, b) => a.observeDate.localeCompare(b.observeDate) || a.id.localeCompare(b.id))
+          .map((spore) => {
+            if (typeof spore.createdAt === 'number') return { ...spore, createdAt: spore.createdAt }
+            const parsed = Date.parse(`${spore.observeDate}T00:00:00`)
+            const base = Number.isNaN(parsed) ? Date.UTC(2000, 0, 1) : parsed
+            const index = counts.get(spore.recordId) ?? 0
+            counts.set(spore.recordId, index + 1)
+            return { ...spore, createdAt: base + index * 1000 }
+          })
+        await sporesTable.bulkPut(migrated)
       })
   }
 }
@@ -191,6 +219,8 @@ export async function seedDemoData(): Promise<void> {
     }
   ])
 
+  const sporeSeedBase = Date.parse(`${today}T09:00:00`)
+
   await db.spores.bulkPut([
     {
       id: 'spo_001',
@@ -199,7 +229,8 @@ export async function seedDemoData(): Promise<void> {
       shape: '圆形印痕，边缘略散',
       hours: 12,
       observeDate: today,
-      moisture: '子实体偏干，印痕较薄'
+      moisture: '子实体偏干，印痕较薄',
+      createdAt: sporeSeedBase
     },
     {
       id: 'spo_002',
@@ -208,7 +239,8 @@ export async function seedDemoData(): Promise<void> {
       shape: '圆形印痕，中心致密',
       hours: 8,
       observeDate: today,
-      moisture: '新鲜子实体，印痕厚实'
+      moisture: '新鲜子实体，印痕厚实',
+      createdAt: sporeSeedBase + 1000
     },
     {
       id: 'spo_003',
@@ -217,7 +249,8 @@ export async function seedDemoData(): Promise<void> {
       shape: '不规则印痕',
       hours: 24,
       observeDate: today,
-      moisture: '木质化样本，印痕浅'
+      moisture: '木质化样本，印痕浅',
+      createdAt: sporeSeedBase + 2000
     }
   ])
 

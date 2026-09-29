@@ -11,6 +11,7 @@ import { recordStore } from '@/stores/recordStore'
 import { sporeStore } from '@/stores/sporeStore'
 import { pointStore } from '@/stores/pointStore'
 import { identifyStore } from '@/stores/identifyStore'
+import { latestSpore } from '@/utils/spore'
 
 const route = useRoute()
 const router = useRouter()
@@ -66,7 +67,7 @@ function syncQuery(): void {
 }
 
 function sporeOf(recordId: string): SporePrint | null {
-  return sporeState.spores.find((item) => item.recordId === recordId) ?? null
+  return latestSpore(sporeState.spores, recordId)
 }
 
 function pointName(pointId: string): string {

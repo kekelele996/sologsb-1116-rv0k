@@ -14,4 +14,6 @@ export interface SporePrint {
   observeDate: string
   /** 样本干湿度说明 */
   moisture: string
+  /** 登记时间，用于按登记先后留档与确定最近一次观察 */
+  createdAt: number
 }

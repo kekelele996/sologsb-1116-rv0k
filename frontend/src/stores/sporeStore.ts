@@ -1,6 +1,7 @@
 import { createStore } from 'zustand/vanilla'
 import type { SporePrint } from '@/types'
 import { db, syncAll, syncDelete, syncPut } from '@/hooks/usePersistentStore'
+import { sortSporesByRegistration } from '@/utils/spore'
 
 export interface SporeState {
   spores: SporePrint[]
@@ -15,8 +16,7 @@ export const sporeStore = createStore<SporeState>((set, get) => ({
   spores: [],
   loaded: false,
   hydrate: async () => {
-    const spores = await syncAll<SporePrint>(db.spores)
-    spores.sort((a, b) => b.observeDate.localeCompare(a.observeDate))
+    const spores = sortSporesByRegistration(await syncAll<SporePrint>(db.spores))
     set({ spores, loaded: true })
   },
   save: async (spore) => {

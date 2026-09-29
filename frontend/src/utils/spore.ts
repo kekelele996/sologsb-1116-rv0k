@@ -1,4 +1,4 @@
-import type { GillAttachment, SporeColor } from '@/types'
+import type { GillAttachment, SporeColor, SporePrint } from '@/types'
 
 /** 印色 → 可辨识色卡色值 */
 export const SPORE_COLOR_VALUES: Record<SporeColor, string> = {
@@ -64,4 +64,18 @@ export function toPercent(score: number): number {
 /** 印色文字色 */
 export function sporeTextColor(color: SporeColor): string {
   return SPORE_TEXT_VALUES[color] ?? '#222222'
+}
+
+/** 按登记先后排序（越早越靠前） */
+export function sortSporesByRegistration(spores: SporePrint[]): SporePrint[] {
+  return [...spores].sort((a, b) => a.createdAt - b.createdAt || a.observeDate.localeCompare(b.observeDate) || a.id.localeCompare(b.id))
+}
+
+/** 取条目最近一次登记的孢子印观察；图谱与候选排序只使用该结果 */
+export function latestSpore(spores: SporePrint[], recordId: string): SporePrint | null {
+  return (
+    spores
+      .filter((item) => item.recordId === recordId)
+      .sort((a, b) => b.createdAt - a.createdAt || b.observeDate.localeCompare(a.observeDate) || b.id.localeCompare(a.id))[0] ?? null
+  )
 }
